@@ -25,7 +25,8 @@ It's an app that proves that with enough programming, you can turn any piece of 
 Yep. MacBooks have a hidden lid angle sensor that reports its exact position. I'm using the *velocity* of the lid movement to simulate pumping air into a virtual reservoir. It's the most fun you can have with a hinge.
 
 **Will it work on my M1 Mac?**
-I made and tested this on my M1 pro, so hopefully it does on yours too!
+I made and tested this on my M1 pro, so hopefully it does on yours too! 
+Howevers, users seem to have troubles with getting it to run on the base M1 Air and touchbar Pro from 2020. :/
 
 **What about my iMac?**
 Does it have a lid you can flap? No? Then you might be out of luck. I suppose you could try picking it up and shaking it gently, but my lawyer (and yours) would strongly advise against it.
@@ -45,3 +46,5 @@ This project stands on the shoulders of a giant. It would not exist without the 
 ## Building It
 
 You'll need Xcode. Clone the repo, hit the big triangle play button, and you should be good to go.
+
+If you just want to try it out, just download the latest release!
