@@ -50,12 +50,13 @@ This project stands on the shoulders of a giant. It would not exist without the 
 
 ## Brew Installation
 
-Simply run the following command in the terminal!
-``` 
+Simply run the following commands in the terminal!
+```
+brew tap Rocktopus101/homebrew-personal
+
 brew install hingemonium
 ```
-
-Or just download the latest release\!
+ just download the latest release\!
 
 ## Building It
 
