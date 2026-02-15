@@ -23,6 +23,11 @@
 
 
 /**
+ * Returns the number of notes currently being held down.
+ */
+- (NSUInteger)activeNoteCount;
+
+/**
  * Updates the volume of all playing notes.
  * @param volume The target volume, from 0.0 to 1.0.
  */

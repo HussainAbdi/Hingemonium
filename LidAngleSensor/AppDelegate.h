@@ -23,6 +23,7 @@ typedef NS_ENUM(NSInteger, NoteNamingMode) {
 @property (nonatomic, assign) double lastLidAngle;
 @property (nonatomic, assign) double lastUpdateTime;
 @property (nonatomic, assign) double airPressure;
+@property (nonatomic, assign) double smoothedVelocity;
 
 
 // Harmonium Audio Engine

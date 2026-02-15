@@ -197,6 +197,10 @@ static const float kFadeOutRate = 2.5f; // Higher value = faster fade-out
     }
 }
 
+- (NSUInteger)activeNoteCount {
+    return self.activePlayers.count;
+}
+
 - (void)updateVolume:(float)volume {
     self.currentVolume = fmaxf(0.0f, fminf(1.0f, volume));
     

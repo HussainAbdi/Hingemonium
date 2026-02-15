@@ -40,6 +40,7 @@ static const int kKeyToMidiNote[] = {
     self.lastLidAngle = -1.0;
     self.lastUpdateTime = CACurrentMediaTime();
     self.airPressure = 0.0; // Start with no air
+    self.smoothedVelocity = 0.0;
     
     [self.harmoniumEngine startEngine];
 
@@ -185,64 +186,76 @@ static const int kKeyToMidiNote[] = {
 }
 
 - (void)update {
-    if (!self.lidSensor.isAvailable && self.airPressureToggle.state == NSControlStateValueOff) {
-        self.angleLabel.stringValue = @"Sensor N/A";
-        // Set air pressure to 0 if sensor is unavailable and toggle is off
-        self.airPressure = 0.0;
-        [self.harmoniumEngine updateVolume:(float)self.airPressure];
+    double currentTime = CACurrentMediaTime();
+    double deltaTime = currentTime - self.lastUpdateTime;
+
+    // Guard against bad time deltas
+    if (deltaTime <= 0 || deltaTime > 0.5) {
+        self.lastUpdateTime = currentTime;
         return;
     }
-    
-    double angle = [self.lidSensor lidAngle];
-    double currentTime = CACurrentMediaTime();
-    
-    // --- 2. Update Air Pressure Model ---
+
+    // Always process note-release fades regardless of air mode
+    [self.harmoniumEngine processFadesWithDeltaTime:deltaTime];
+
+    // --- Air Pressure Model ---
     if (self.airPressureToggle.state == NSControlStateValueOn) {
-        // If the toggle is ON, force air pressure to 100%
+        // Toggle override: force full air pressure
         self.airPressure = 1.0;
+        double angle = self.lidSensor.isAvailable ? [self.lidSensor lidAngle] : -1;
+        if (angle >= 0) {
+            self.angleLabel.stringValue = [NSString stringWithFormat:@"Angle: %.1f° | Air: 100%%", angle];
+        } else {
+            self.angleLabel.stringValue = @"Air: 100% (Max Air ON)";
+        }
+    } else if (!self.lidSensor.isAvailable) {
+        self.angleLabel.stringValue = @"Sensor N/A";
+        self.airPressure = 0.0;
     } else {
-        // Otherwise, use the existing lid sensor logic
+        // --- Bellows physics ---
+        double angle = [self.lidSensor lidAngle];
         if (angle < 0) {
             self.angleLabel.stringValue = @"Read Error";
-            return;
-        }
-
-        if (self.lastLidAngle < 0) {
-            self.lastLidAngle = angle;
             self.lastUpdateTime = currentTime;
             return;
         }
 
-        double deltaTime = currentTime - self.lastUpdateTime;
-        if (deltaTime <= 0 || deltaTime > 0.5) {
-            self.lastLidAngle = angle;
-            self.lastUpdateTime = currentTime;
-            return;
+        if (self.lastLidAngle >= 0) {
+            double instantVelocity = fabs(angle - self.lastLidAngle) / deltaTime;
+
+            // Smooth velocity to reduce sensor noise and jitter
+            double smoothingFactor = 0.3;
+            self.smoothedVelocity = smoothingFactor * instantVelocity
+                                  + (1.0 - smoothingFactor) * self.smoothedVelocity;
+
+            // Dead zone: ignore tiny movements (sensor noise / drift)
+            double velocityThreshold = 5.0;
+            double effectiveVelocity = fmax(0.0, self.smoothedVelocity - velocityThreshold);
+
+            // Sub-linear pump curve: gentle pumping gives some air,
+            // vigorous pumping gives more but with diminishing returns
+            double pumpCoefficient = 0.035;
+            double pumpRate = pow(effectiveVelocity, 0.7) * pumpCoefficient;
+
+            // Back-pressure: harder to fill when reservoir is near full
+            double backPressure = 1.0 - (self.airPressure * self.airPressure);
+            self.airPressure += pumpRate * deltaTime * backPressure;
+
+            // Air drain depends on how many reeds are open (keys held)
+            NSUInteger activeNotes = [self.harmoniumEngine activeNoteCount];
+            double sealLeakRate = 0.05;       // Slow leak (imperfect bellows seal)
+            double perReedDrainRate = 0.12;   // Each held key = one open reed
+            double totalDrainRate = sealLeakRate + (activeNotes * perReedDrainRate);
+            self.airPressure -= totalDrainRate * deltaTime;
         }
 
-        double instantVelocity = fabs(angle - self.lastLidAngle) / deltaTime;
-        double pumpFactor = 0.015;
-        self.airPressure += instantVelocity * pumpFactor;
-        
-        double decayRate = 0.5;
-        self.airPressure -= decayRate * deltaTime;
-        self.airPressure = fmax(0.0, fmin(1.0, self.airPressure));
-
-        // Save state for the next frame
         self.lastLidAngle = angle;
-        self.lastUpdateTime = currentTime;
+        self.airPressure = fmax(0.0, fmin(1.0, self.airPressure));
+        self.angleLabel.stringValue = [NSString stringWithFormat:@"Angle: %.1f° | Air: %.0f%%", angle, self.airPressure * 100];
     }
 
-    [self.harmoniumEngine processFadesWithDeltaTime:(currentTime - self.lastUpdateTime)];
-
-    // --- 3. Update UI and Audio Engine ---
-    self.angleLabel.stringValue = [NSString stringWithFormat:@"Angle: %.1f° | Air Pressure: %.0f%%", angle, self.airPressure * 100];
     [self.harmoniumEngine updateVolume:(float)self.airPressure];
-
-    // This check ensures lastUpdateTime is always updated, even when toggled on
-    if (self.airPressureToggle.state == NSControlStateValueOff) {
-        self.lastUpdateTime = currentTime;
-    }
+    self.lastUpdateTime = currentTime;
 }
 - (void)namingModeDidChange:(NSPopUpButton *)sender {
     self.currentNamingMode = (NoteNamingMode)sender.indexOfSelectedItem;
