@@ -1,12 +1,10 @@
-## We went Viral?\!  [Check out the post!](https://www.instagram.com/reel/DP9AHwSjcvt/?utm_source=ig_web_copy_link&igsh=NTc4MTIwNjQ2YQ==)
-
 # Your MacBook is Now a Harmonium
 
-Hi, I'm Vedaant (or **rocktopus101** on GitHub). As a Computer Science grad student at USC, my MacBook is usually for compiling code, writing papers, and fueling a mild caffeine addiction. But I figured, why not make it musical?
+> This is a fork of [Rocktopus101/Hingemonium](https://github.com/Rocktopus101/Hingemonium) with improved bellows physics and a CI build workflow. See [What's Changed in This Fork](#whats-changed-in-this-fork) below.
 
-This app transforms your MacBook into a surprisingly fun and expressive harmonium. You play the notes on the keyboard, and in a stroke of what is either genius or madness, you **use the laptop's lid as the bellows to pump air**.
+This app transforms your MacBook into a surprisingly fun and expressive harmonium. You play the notes on the keyboard, and you **use the laptop's lid as the bellows to pump air**.
 
-This project is a fork and a complete musical reimagining of the original **LidAngleSensor** utility by the brilliant Sam Gold.
+This project is a fork and a complete musical reimagining of the original **LidAngleSensor** utility by Sam Gold.
 
 -----
 
@@ -14,50 +12,107 @@ This project is a fork and a complete musical reimagining of the original **LidA
 
 The concept is simple, just like a real harmonium: you need air and you need to press a key.
 
-  * **🎹 The Keys:** The bottom two rows of your keyboard are the keys (i.e., `Z`, `X`, `C`... for the white keys; and `S`, `D`, `G`...for the black keys). A handy legend in the app shows you exactly which note each key plays in the selected scale.
-  * **💨 The Bellows:** This is the fun part. **Open and close your laptop lid to pump air**. The faster you move it, the more "air pressure" you build, and the louder the notes will be. If you stop pumping, the sound will naturally fade out as the air depletes.
-  * **🎼 The Scales:** Not a fan of playing in Chromatic? Use the dropdown to switch between Major, Minor, and other scales to easily create melodies.
+  * **The Keys:** The bottom two rows of your keyboard are the keys (i.e., `Z`, `X`, `C`... for the white keys; and `S`, `D`, `G`...for the black keys). A handy legend in the app shows you exactly which note each key plays in the selected scale.
+  * **The Bellows:** **Open and close your laptop lid to pump air**. The faster you move it, the more air pressure you build. Playing more notes drains air faster, just like a real harmonium. If you stop pumping, the sound will naturally fade as the air depletes.
+  * **The Scales:** Use the dropdown to switch between Major, Minor, Chromatic, and other scales.
+  * **Max Air Toggle:** Flip this on to bypass bellows physics and play at full volume (useful for testing or if your lid sensor isn't working).
 
 -----
 
-## The Obligatory FAQ
+## What's Changed in This Fork
 
-**So, what is this, exactly?**
-It's an app that proves that with enough programming, you can turn any piece of hardware into a musical instrument. It's also a fantastic way for me to learn about macOS audio programming instead of studying for my finals.
+### Realistic Bellows Physics
+The original air pressure model was essentially an on/off switch — any lid movement instantly maxed out pressure, then it drained at a fixed rate. This fork replaces it with a proper bellows simulation:
 
-**Wait, the LID is the bellows? How?**
-Yep. MacBooks have a hidden lid angle sensor that reports its exact position. I'm using the *velocity* of the lid movement to simulate pumping air into a virtual reservoir. It's the most fun you can have with a hinge.
+| Behavior | Description |
+|---|---|
+| **Gradual fill** | Takes several pump strokes to build full pressure, not instant |
+| **Velocity smoothing** | Exponential moving average filters out sensor noise and jitter |
+| **Dead zone** | Tiny movements (sensor drift) are ignored |
+| **Back-pressure** | Harder to pump when the reservoir is already full |
+| **Key-dependent drain** | Each held key acts as an open reed consuming air — more notes = faster drain |
+| **Seal leak** | Very slow drain when no keys are held (bellows aren't perfectly airtight) |
 
-**Will it work on my M1 Mac?**
-I made and tested this on my M1 pro, so hopefully it does on yours too\!
-However, users seem to have troubles with getting it to run on the base M1 Air and touchbar Pro from 2020. :/
+### Bug Fix: Note Release Fade
+Released notes were not fading out due to a timing bug where `processFadesWithDeltaTime:` was always receiving a delta of 0. This is now fixed.
 
-**What about my iMac?**
-Does it have a lid you can flap? No? Then you might be out of luck. I suppose you could try picking it up and shaking it gently, but my lawyer (and yours) would strongly advise against it.
-
-**Can I help?**
-Please do\! Fork the repo, add a tabla machine, make it sound like a sitar, fix my questionable audio mixing—go wild.
-Right now, the code doesn't really work for piano style sharper notes so if you could make that work it would be great\!
-
-**Why is the size so big?**
-It's the 40 high quality Harmonium sounds.
+### CI Build Workflow
+A GitHub Actions workflow builds the app on every push to `main`, so you don't need Xcode installed locally. See [Building Without Xcode](#building-without-xcode-ci) below.
 
 -----
 
-## Origins & Big Thanks
+## Installation
 
-This project stands on the shoulders of a giant. It would not exist without the original **LidAngleSensor** utility created by **Sam Gold**. He did the hard work of discovering the sensor and building the original app. I just put a musical spin on it. All credit for the foundational concept goes to him. You should check out his work\!
-
-## Brew Installation
-
-Simply run the following commands in the terminal!
+### Option 1: Homebrew (original upstream release)
 ```
 brew tap Rocktopus101/homebrew-personal
-
 brew install hingemonium
 ```
- just download the latest release\!
+Note: this installs the original upstream version, not this fork's changes.
 
-## Building It
+### Option 2: Building Without Xcode (CI)
+This fork uses GitHub Actions to build on push. To get the latest build:
 
-You'll need Xcode. Clone the repo, hit the big triangle play button, and you should be good to go.
+```bash
+# Clone the repo
+git clone https://github.com/HussainAbdi/Hingemonium.git
+cd Hingemonium
+
+# Download the latest build into the project folder
+gh run download --name Hingemonium --dir .
+
+# Unzip and run
+unzip -o Hingemonium.zip
+open Hingemonium.app
+```
+
+macOS Gatekeeper will likely block the app on first launch since it's ad-hoc signed. To allow it:
+1. Right-click the app and select **Open**, or
+2. Go to **System Settings > Privacy & Security** and click **Open Anyway**
+
+### Option 3: Build with Xcode
+Clone the repo, open `Hingemonium.xcodeproj` in Xcode, and hit the play button.
+
+-----
+
+## Dev Workflow (No Xcode Required)
+
+If you want to make changes and rebuild without Xcode installed:
+
+```bash
+# 1. Make your code changes, then commit and push
+git add -A && git commit -m "Your change description"
+git push origin main
+
+# 2. Wait for the build (takes ~45 seconds), then download it
+gh run watch                                   # watch the build progress
+gh run download --name Hingemonium --dir .      # download to project folder
+
+# 3. Unzip and run
+unzip -o Hingemonium.zip
+open Hingemonium.app
+```
+
+You can also trigger a build manually without pushing:
+```bash
+gh workflow run build.yml
+```
+
+-----
+
+## FAQ
+
+**Will it work on my M1 Mac?**
+Made and tested on M1 Pro. Some users have had trouble on the base M1 Air and 2020 touchbar Pro.
+
+**What about my iMac?**
+No lid, no bellows. Sorry.
+
+**Why is the download so big?**
+It's the 40 high quality harmonium WAV samples (~68 MB).
+
+-----
+
+## Origins & Thanks
+
+This project would not exist without the original **LidAngleSensor** utility created by **Sam Gold** and the **Hingemonium** harmonium app by **Vedaant Rajeshirke** ([rocktopus101](https://github.com/Rocktopus101)).
